@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#01200F" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="Jogo de adivinhação de palavras carregado a partir de database.xlsx" />
+  <title>Entre Letras</title>
+
+  <link rel="preconnect" href="https://cdn.sheetjs.com" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand" aria-label="Entre Letras">
+        <span class="brand-mark" aria-hidden="true">EL</span>
+        <div class="brand-copy">
+          <strong>Entre Letras</strong>
+          <span>Adivinhe pelo contexto</span>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="icon-button" id="reloadDatabaseButton" type="button" title="Atualizar base" aria-label="Atualizar base de palavras">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 6v5h-5M4 18v-5h5M6.1 9a7 7 0 0 1 11.7-2.6L20 11M4 13l2.2 4.6A7 7 0 0 0 18 15" />
+          </svg>
+        </button>
+        <button class="icon-button" id="helpButton" type="button" title="Como jogar" aria-label="Como jogar">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M9.7 9a2.5 2.5 0 1 1 3.7 2.2c-.9.5-1.4 1-1.4 2M12 17h.01" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="game-layout" id="gameLayout" aria-busy="true">
+      <section class="game-panel" aria-labelledby="gameTitle">
+        <div class="progress-row">
+          <div class="progress-copy">
+            <span class="eyebrow">RODADA</span>
+            <strong id="progressText">Carregando…</strong>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <span id="progressBar"></span>
+          </div>
+        </div>
+
+        <div class="clue-card">
+          <div class="clue-heading">
+            <span class="eyebrow">CONTEXTO</span>
+            <span class="word-count" id="wordLengthText">—</span>
+          </div>
+          <h1 id="gameTitle" class="clue-text">Preparando o jogo…</h1>
+
+          <div class="secondary-hint" id="secondaryHint" hidden>
+            <span class="secondary-hint-label">Dica extra</span>
+            <p id="secondaryHintText"></p>
+          </div>
+        </div>
+
+        <section class="answer-section" aria-label="Palavra a descobrir">
+          <span class="eyebrow">PALAVRA</span>
+          <div class="masked-word" id="maskedWord" aria-label="Palavra parcialmente revelada"></div>
+        </section>
+
+        <form class="guess-form" id="guessForm" novalidate>
+          <label for="guessInput">Sua resposta</label>
+          <div class="input-row">
+            <input
+              id="guessInput"
+              name="guess"
+              type="text"
+              inputmode="text"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+              placeholder="Digite a palavra"
+              enterkeyhint="done"
+              aria-describedby="feedbackText"
+            />
+            <button class="button button-primary" id="submitButton" type="submit">Responder</button>
+          </div>
+          <p class="feedback" id="feedbackText" role="status" aria-live="polite"></p>
+        </form>
+
+        <div class="game-actions">
+          <button class="button button-secondary" id="hintButton" type="button" hidden>Mostrar dica</button>
+          <button class="button button-ghost" id="skipButton" type="button">Pular</button>
+        </div>
+      </section>
+
+      <aside class="stats-panel" aria-label="Desempenho da partida">
+        <div class="stats-header">
+          <span class="eyebrow">PARTIDA</span>
+          <span class="database-status" id="databaseStatus">Base local</span>
+        </div>
+
+        <div class="stats-grid">
+          <article class="stat-card">
+            <span>Acertos</span>
+            <strong id="correctStat">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Sequência</span>
+            <strong id="streakStat">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Erros</span>
+            <strong id="wrongStat">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Restantes</span>
+            <strong id="remainingStat">0</strong>
+          </article>
+        </div>
+
+        <div class="session-card">
+          <div class="session-row">
+            <span>Aproveitamento</span>
+            <strong id="accuracyStat">0%</strong>
+          </div>
+          <div class="session-progress" aria-hidden="true">
+            <span id="accuracyBar"></span>
+          </div>
+          <p>Maiúsculas, minúsculas e acentos não alteram a validação da resposta.</p>
+        </div>
+
+        <button class="text-button" id="restartButton" type="button">Reiniciar partida</button>
+      </aside>
+    </main>
+  </div>
+
+  <div class="loading-layer" id="loadingLayer" role="status" aria-live="polite">
+    <div class="loader" aria-hidden="true"></div>
+    <strong id="loadingTitle">Carregando database.xlsx</strong>
+    <span id="loadingMessage">Preparando as palavras da partida.</span>
+  </div>
+
+  <dialog class="modal" id="helpDialog" aria-labelledby="helpTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <span class="eyebrow">COMO JOGAR</span>
+          <h2 id="helpTitle">Descubra a palavra</h2>
+        </div>
+        <button class="icon-button icon-button-dark" id="closeHelpButton" type="button" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+      </div>
+      <p>Leia o contexto e tente descobrir a palavra escondida. Algumas letras já aparecem para orientar a resposta.</p>
+      <div class="rules-grid">
+        <div><strong>3–4 letras</strong><span>1 revelada</span></div>
+        <div><strong>5–7 letras</strong><span>2 reveladas</span></div>
+        <div><strong>8–10 letras</strong><span>3 reveladas</span></div>
+        <div><strong>11+ letras</strong><span>4 reveladas</span></div>
+      </div>
+      <p class="modal-note">Espaços, hífens e pontuação ficam visíveis e não entram na contagem de letras reveladas.</p>
+      <button class="button button-primary button-full" id="understoodButton" type="button">Entendi</button>
+    </div>
+  </dialog>
+
+  <dialog class="modal" id="endDialog" aria-labelledby="endTitle">
+    <div class="modal-content modal-content-centered">
+      <span class="eyebrow">PARTIDA CONCLUÍDA</span>
+      <h2 id="endTitle">Você percorreu toda a base.</h2>
+      <p id="endSummary"></p>
+      <div class="end-score" id="endScore">0%</div>
+      <button class="button button-primary button-full" id="playAgainButton" type="button">Jogar novamente</button>
+    </div>
+  </dialog>
+
+  <dialog class="modal" id="databaseDialog" aria-labelledby="databaseDialogTitle">
+    <form class="modal-content" method="dialog">
+      <div class="modal-header">
+        <div>
+          <span class="eyebrow">BASE DE DADOS</span>
+          <h2 id="databaseDialogTitle">Não foi possível abrir database.xlsx</h2>
+        </div>
+      </div>
+      <p id="databaseErrorText">Confirme se o arquivo está na mesma pasta do site. Se estiver abrindo o HTML diretamente no computador, selecione a planilha manualmente.</p>
+      <label class="file-picker" for="databaseFileInput">
+        <span>Selecionar database.xlsx</span>
+        <small>Arquivos .xlsx ou .xls</small>
+      </label>
+      <input id="databaseFileInput" type="file" accept=".xlsx,.xls" hidden />
+      <button class="button button-ghost button-full" value="cancel" type="submit">Fechar</button>
+    </form>
+  </dialog>
+
+  <noscript>Este jogo precisa de JavaScript habilitado.</noscript>
+
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="script.js" defer></script>
+</body>
+</html>
