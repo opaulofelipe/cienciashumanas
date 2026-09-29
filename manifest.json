@@ -1,0 +1,26 @@
+{
+  "name": "Ciências Humanas",
+  "short_name": "Ciências Humanas",
+  "description": "Jogo de adivinhação de palavras de Ciências Humanas.",
+  "lang": "pt-BR",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#01200F",
+  "theme_color": "#01200F",
+  "icons": [
+    {
+      "src": "icon-192.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}
