@@ -13,6 +13,7 @@ const state = {
   streak: 0,
   answeredCurrent: false,
   hintShown: false,
+  letterHintsUsed: 0,
 };
 
 const el = {};
@@ -27,7 +28,7 @@ function cacheElements() {
   [
     "gameLayout", "progressText", "progressBar", "gameTitle", "wordLengthText",
     "secondaryHint", "secondaryHintText", "maskedWord", "guessForm", "guessInput",
-    "submitButton", "feedbackText", "hintButton", "skipButton", "correctStat",
+    "submitButton", "feedbackText", "letterHintButton", "hintButton", "skipButton", "correctStat",
     "streakStat", "wrongStat", "remainingStat", "accuracyStat", "accuracyBar",
     "databaseStatus", "restartButton", "reloadDatabaseButton", "helpButton",
     "helpDialog", "closeHelpButton", "understoodButton", "endDialog", "endSummary",
@@ -41,6 +42,7 @@ function cacheElements() {
 function bindEvents() {
   el.guessForm.addEventListener("submit", handleGuess);
   el.skipButton.addEventListener("click", skipCurrent);
+  el.letterHintButton.addEventListener("click", revealRandomLetterHint);
   el.hintButton.addEventListener("click", showSecondaryHint);
   el.restartButton.addEventListener("click", () => startNewGame(true));
   el.reloadDatabaseButton.addEventListener("click", () => loadDatabase(true));
@@ -231,6 +233,7 @@ function startNewGame(announce = false) {
   state.streak = 0;
   state.answeredCurrent = false;
   state.hintShown = false;
+  state.letterHintsUsed = 0;
 
   if (el.endDialog.open) el.endDialog.close();
   loadCurrentItem();
@@ -249,6 +252,7 @@ function loadCurrentItem() {
   state.currentItem = state.items[itemIndex];
   state.answeredCurrent = false;
   state.hintShown = false;
+  state.letterHintsUsed = 0;
 
   const answerLength = countLetters(state.currentItem.answer);
   state.revealedIndexes = chooseRevealedIndexes(state.currentItem.answer, getRevealCount(answerLength));
@@ -260,6 +264,8 @@ function loadCurrentItem() {
   el.hintButton.hidden = !state.currentItem.extraHint;
   el.hintButton.disabled = false;
   el.hintButton.textContent = "Mostrar dica";
+  el.letterHintButton.disabled = false;
+  updateLetterHintButton();
   el.guessInput.value = "";
   el.guessInput.disabled = false;
   el.submitButton.disabled = false;
@@ -384,6 +390,65 @@ function skipCurrent() {
   window.setTimeout(goToNextItem, 1250);
 }
 
+function revealRandomLetterHint() {
+  if (!state.currentItem || state.answeredCurrent) return;
+
+  const characters = Array.from(state.currentItem.answer);
+  const hiddenLetterIndexes = [];
+
+  characters.forEach((char, index) => {
+    if (isLetterOrNumber(char) && !state.revealedIndexes.has(index)) {
+      hiddenLetterIndexes.push(index);
+    }
+  });
+
+  if (!hiddenLetterIndexes.length) {
+    finishRoundAfterHints();
+    return;
+  }
+
+  const randomIndex = hiddenLetterIndexes[Math.floor(Math.random() * hiddenLetterIndexes.length)];
+  state.revealedIndexes.add(randomIndex);
+  state.letterHintsUsed += 1;
+  renderMaskedWord(false);
+  updateLetterHintButton();
+
+  const stillHidden = hiddenLetterIndexes.length - 1;
+
+  if (state.letterHintsUsed >= 3 || stillHidden === 0) {
+    finishRoundAfterHints();
+    return;
+  }
+
+  const remaining = 3 - state.letterHintsUsed;
+  setFeedback(
+    `Uma letra foi revelada. Você ainda pode usar ${remaining} ${remaining === 1 ? "dica" : "dicas"}.`
+  );
+}
+
+function finishRoundAfterHints() {
+  if (!state.currentItem || state.answeredCurrent) return;
+
+  state.wrong += 1;
+  state.streak = 0;
+  state.answeredCurrent = true;
+  renderMaskedWord(true);
+  setFeedback(`Limite de dicas atingido. Resposta: ${state.currentItem.answer}`, "error");
+  lockCurrentRound();
+  updateStats();
+  window.setTimeout(goToNextItem, 1500);
+}
+
+function updateLetterHintButton() {
+  const remaining = Math.max(3 - state.letterHintsUsed, 0);
+  el.letterHintButton.textContent =
+    `Dica · ${remaining} ${remaining === 1 ? "restante" : "restantes"}`;
+  el.letterHintButton.setAttribute(
+    "aria-label",
+    `Revelar uma letra aleatória. ${remaining} ${remaining === 1 ? "dica restante" : "dicas restantes"}.`
+  );
+}
+
 function showSecondaryHint() {
   if (!state.currentItem?.extraHint) return;
   state.hintShown = true;
@@ -396,6 +461,7 @@ function lockCurrentRound() {
   el.guessInput.disabled = true;
   el.submitButton.disabled = true;
   el.skipButton.disabled = true;
+  el.letterHintButton.disabled = true;
   el.hintButton.disabled = true;
 }
 
